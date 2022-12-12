@@ -1,12 +1,17 @@
-.defaultHighlight{
+.highlightHover:hover{
     position: relative;
-    background-color: #b1dadd;
-}
-
-.defaultHighlight:hover{
     box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.75);
     color: rgb(3, 26, 49);
 }
+
+.defaultHighlight{
+    background-color: #b1dadd;
+}
+
+.foundHighlight{
+    background-color: #d1bb92;
+}
+
 
 #contextMenu {
   display: block;
@@ -18,5 +23,6 @@
   left:0%;
   background-color:#e0e0e0;
   box-shadow:5px 5px #909090;
-  z-index: 10;
+  z-index: 9999;
+  pointer-events: visible;
 }

@@ -117,25 +117,33 @@ async function saveNote(elem, word, note) {
 
 ///////////////////////////////////////////////
 
-function setZIndices() {
-    var elems = document.body.getElementsByTagName("*");
-    var len = elems.length
+// function setZIndices() {
+//     var elems = document.body.getElementsByTagName("*");
+//     var len = elems.length
 
-    for (var i=0;i<len;i++) {
+//     for (var i=0;i<len;i++) {
 
-        if (window.getComputedStyle(elems[i],null).getPropertyValue('position') == 'fixed') {
-            if (!elems[i].style.zIndex) {
-                elems[i].style.zIndex = 0;
-            };
+//         if (window.getComputedStyle(elems[i],null).getPropertyValue('position') == 'fixed') {
+//             if (!elems[i].style.zIndex) {
+//                 elems[i].style.zIndex = 0;
+//             };
+//         }
+
+//     }
+// }
+chrome.runtime.onMessage.addListener(
+    function (request, sender, sendResonse) {
+        console.log("message received");
+        if (request.message === "applyDefaultHighlights") {
+            console.log("Message = applyDefaultHighlights");
+            hightlightEntirePage();
         }
-
     }
-}
-
+);
 
 async function hightlightEntirePage() {
     console.log("highlightEntirePage");
-    setZIndices();
+   // setZIndices();
     await initializeHighlights();
     findAndReplaceDOMText(
         document.body,

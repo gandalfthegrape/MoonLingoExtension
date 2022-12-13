@@ -5,6 +5,11 @@ console.log("Running content_script.js");
 let currentElement;
 
 function showMenu() {
+    const parent = currentElement.parentElement;
+    if (parent.nodeName == "A") {
+        toggleDisableLink(parent);
+    };
+
     const text = currentElement.innerText;
     const note = currentElement.dataset.note || "";
 
@@ -30,12 +35,30 @@ function showMenu() {
 }
 
 function hideMenu() {
-    let menuDiv = document.getElementById("contextMenu");
+    const menuDiv = document.getElementById("contextMenu");
     if (menuDiv === null) { return };
-    menuDiv.parentElement.removeChild(menuDiv);
+
+    const parent = menuDiv.parentElement;
+    if (parent.nodeName == "A") {
+        toggleDisableLink(parent);
+    };
+    parent.removeChild(menuDiv);
     hideMenu();
 }
 
+function toggleDisableLink(node) {
+    const link = node.href;
+    const data = node.dataset.link;
+    if (link != undefined) {
+        node.classList.add("disabledLink");
+        node.setAttribute("data-link", link);
+        node.removeAttribute("href");
+    } else if (data != undefined) {
+        node.classList.remove("disabledLink");
+        node.setAttribute("href", data);
+        node.removeAttribute("data-link");
+    }
+}
 // Set up an event handler for the document right click
 document.addEventListener("contextmenu", function(event) {
   // Only do something when the element that was actually right-clicked
@@ -155,8 +178,8 @@ async function hightlightEntirePage() {
 function createWordNode(portion, match) {
     let node = document.createElement("span");
     node.classList.add("highlightHover");
-    node.innerText = match;
-    let note = highlights[language][match];
+    node.innerText = portion.text;
+    let note = highlights[language][portion.text];
     if (!note) {
         node.classList.add("defaultHighlight");
     } else {

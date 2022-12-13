@@ -14,14 +14,19 @@
 
 
 #contextMenu {
-  display: block;
-  position:absolute; 
-  border:2px double #333; 
-  width:150px; 
-  height:175px;
-  top:100%;
-  left:0%;
-  background-color:#e0e0e0;
-  box-shadow:5px 5px #909090;
-  z-index: 9999;
+    cursor: default;
+    display: block;
+    position:absolute; 
+    border:2px double #333; 
+    width:150px; 
+    height:175px;
+    top:100%;
+    left:0%;
+    background-color:#e0e0e0;
+    box-shadow:5px 5px #909090;
+    z-index: 9999;
+}
+
+.disabledLink{
+    cursor: default;
 }

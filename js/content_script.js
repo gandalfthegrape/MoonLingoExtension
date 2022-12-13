@@ -2,24 +2,24 @@ console.log("Running content_script.js");
 // chrome.tabs.query({ active: true }, tab => {
 //     chrome.tabs.executeScript(tab.id, { file: "applyDefaultHighlights.js" });
 // })
-var currentElement;
+let currentElement;
 
 function showMenu() {
     const text = currentElement.innerText;
     const note = currentElement.dataset.note || "";
 
-    var menuDiv = document.createElement("div");
+    let menuDiv = document.createElement("div");
     menuDiv.setAttribute("id", "contextMenu");
     menuDiv.setAttribute("class", "noHideOnClick");
     menuDiv.innerHTML = `${text}<br>`;
 
-    var textInput = document.createElement("input");
+    let textInput = document.createElement("input");
     textInput.setAttribute("type", "userDefinition");
     textInput.setAttribute("class", "noHideOnClick");
     textInput.setAttribute("value", note);
     menuDiv.appendChild(textInput);
 
-    var okButton = document.createElement("input");
+    let okButton = document.createElement("input");
     okButton.setAttribute("type", "button");
     okButton.setAttribute("class", "noHideOnClick");
     okButton.setAttribute("value", "OK");
@@ -30,7 +30,7 @@ function showMenu() {
 }
 
 function hideMenu() {
-    var menuDiv = document.getElementById("contextMenu");
+    let menuDiv = document.getElementById("contextMenu");
     if (menuDiv === null) { return };
     menuDiv.parentElement.removeChild(menuDiv);
     hideMenu();
@@ -45,7 +45,7 @@ document.addEventListener("contextmenu", function(event) {
         event.preventDefault();
         currentElement = event.target;
         showMenu();
-  }
+    }
 });
 
 // Close the menu when you left click anywhere
@@ -60,14 +60,16 @@ document.addEventListener("click", function (event) {
 
 //handling chrome.storage
 
-var highlights;
-var language = "English";
+let highlights;
+let language = "English";
+
 
 const readLocalStorage = async () => {
+    console.log("readLocalStorage");
     return new Promise((resolve, reject) => {
         chrome.storage.local.get(["highlights"], function (results) {
             if (results["highlights"] === undefined) {
-                reject();
+                resolve({}); // this is potentially dangerous, if the get is unsuccessful but highlights do exist, they will get overwritten later.
             } else {
                 resolve(results["highlights"]);
             }
@@ -77,6 +79,7 @@ const readLocalStorage = async () => {
 
 async function initializeHighlights() {
     console.log("initializeHighlights");
+    console.log(language);
     highlights = await readLocalStorage();
    // chrome.storage.local.get("highlights", results => {
     if (!highlights) {
@@ -89,9 +92,8 @@ async function initializeHighlights() {
 };
 
 async function saveNote(elem, word, note) {
-    console.log("getStorage");
-    //initializeHighlights();
-    //chrome.storage.local.get("highlights", results => {
+    console.log("saveNote");
+
     console.log(`Saving ${language} ${word} with note ${note}`)
     highlights[language][word] = [
         note
@@ -102,7 +104,6 @@ async function saveNote(elem, word, note) {
     elem.classList.add("foundHighlight");
     elem.setAttribute("data-note", note);
 
-  //  })
 };
 
 
@@ -117,29 +118,23 @@ async function saveNote(elem, word, note) {
 
 ///////////////////////////////////////////////
 
-// function setZIndices() {
-//     var elems = document.body.getElementsByTagName("*");
-//     var len = elems.length
 
-//     for (var i=0;i<len;i++) {
-
-//         if (window.getComputedStyle(elems[i],null).getPropertyValue('position') == 'fixed') {
-//             if (!elems[i].style.zIndex) {
-//                 elems[i].style.zIndex = 0;
-//             };
-//         }
-
-//     }
-// }
 chrome.runtime.onMessage.addListener(
     function (request, sender, sendResonse) {
         console.log("message received");
         if (request.message === "applyDefaultHighlights") {
             console.log("Message = applyDefaultHighlights");
+            removeAllHighlights();
+            language = request.language;
             hightlightEntirePage();
         }
     }
 );
+
+function removeAllHighlights() {
+    //need to figure out how to do this;
+    return;
+}
 
 async function hightlightEntirePage() {
     console.log("highlightEntirePage");
@@ -158,10 +153,10 @@ async function hightlightEntirePage() {
 };
 
 function createWordNode(portion, match) {
-    var node = document.createElement("span");
+    let node = document.createElement("span");
     node.classList.add("highlightHover");
     node.innerText = match;
-    var note = highlights[language][match];
+    let note = highlights[language][match];
     if (!note) {
         node.classList.add("defaultHighlight");
     } else {
@@ -170,17 +165,6 @@ function createWordNode(portion, match) {
     };
     return node; 
 };
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -200,11 +184,11 @@ function createWordNode(portion, match) {
     }
 }(this, function factory() {
 
-var PORTION_MODE_RETAIN = 'retain';
-var PORTION_MODE_FIRST = 'first';
+let PORTION_MODE_RETAIN = 'retain';
+let PORTION_MODE_FIRST = 'first';
 
-var doc = document;
-var hasOwn = {}.hasOwnProperty;
+let doc = document;
+let hasOwn = {}.hasOwnProperty;
 
 function escapeRegExp(s) {
     return String(s).replace(/([.*+?^=!:${}()|[\]\/\\])/g, '\\$1');
@@ -219,7 +203,7 @@ function deprecated(regex, node, replacement, captureGroup, elFilter) {
     if ((node && !node.nodeType) && arguments.length <= 2) {
     return false;
     }
-    var isReplacementFunction = typeof replacement == 'function';
+    let isReplacementFunction = typeof replacement == 'function';
 
     if (isReplacementFunction) {
     replacement = (function(original) {
@@ -230,7 +214,7 @@ function deprecated(regex, node, replacement, captureGroup, elFilter) {
     }
 
     // Awkward support for deprecated argument signature (<0.4.0)
-    var instance = findAndReplaceDOMText(node, {
+    let instance = findAndReplaceDOMText(node, {
 
     find: regex,
 
@@ -244,7 +228,7 @@ function deprecated(regex, node, replacement, captureGroup, elFilter) {
         if (!m[0]) throw 'findAndReplaceDOMText cannot handle zero-length matches';
 
         if (captureGroup > 0) {
-        var cg = m[captureGroup];
+        let cg = m[captureGroup];
         m.index += m[0].indexOf(cg);
         m[0] = cg;
         }
@@ -333,12 +317,12 @@ exposed.Finder = Finder;
  */
 function Finder(node, options) {
 
-    var preset = options.preset && exposed.PRESETS[options.preset];
+    let preset = options.preset && exposed.PRESETS[options.preset];
 
     options.portionMode = options.portionMode || PORTION_MODE_RETAIN;
 
     if (preset) {
-    for (var i in preset) {
+    for (let i in preset) {
         if (hasOwn.call(preset, i) && !hasOwn.call(options, i)) {
         options[i] = preset[i];
         }
@@ -368,22 +352,22 @@ Finder.prototype = {
      */
     search: function() {
 
-    var match;
-    var matchIndex = 0;
-    var offset = 0;
-    var regex = this.options.find;
-    var textAggregation = this.getAggregateText();
-    var matches = [];
-    var self = this;
+    let match;
+    let matchIndex = 0;
+    let offset = 0;
+    let regex = this.options.find;
+    let textAggregation = this.getAggregateText();
+    let matches = [];
+    let self = this;
 
     regex = typeof regex === 'string' ? RegExp(escapeRegExp(regex), 'g') : regex;
 
     matchAggregation(textAggregation);
 
     function matchAggregation(textAggregation) {
-        for (var i = 0, l = textAggregation.length; i < l; ++i) {
+        for (let i = 0, l = textAggregation.length; i < l; ++i) {
 
-        var text = textAggregation[i];
+        let text = textAggregation[i];
 
         if (typeof text !== 'string') {
             // Deal with nested contexts: (recursive)
@@ -430,8 +414,8 @@ Finder.prototype = {
      */
     getAggregateText: function() {
 
-    var elementFilter = this.options.filterElements;
-    var forceContext = this.options.forceContext;
+    let elementFilter = this.options.filterElements;
+    let forceContext = this.options.forceContext;
 
     return getText(this.node);
 
@@ -449,8 +433,8 @@ Finder.prototype = {
         return [];
         }
 
-        var txt = [''];
-        var i = 0;
+        let txt = [''];
+        let i = 0;
 
         if (node = node.firstChild) do {
 
@@ -459,7 +443,7 @@ Finder.prototype = {
             continue;
         }
 
-        var innerText = getText(node);
+        let innerText = getText(node);
 
         if (
             forceContext &&
@@ -494,11 +478,11 @@ Finder.prototype = {
      */
     processMatches: function() {
 
-    var matches = this.matches;
-    var node = this.node;
-    var elementFilter = this.options.filterElements;
+    let matches = this.matches;
+    let node = this.node;
+    let elementFilter = this.options.filterElements;
 
-    var startPortion,
+    let startPortion,
         endPortion,
         innerPortions = [],
         curNode = node,
@@ -616,14 +600,14 @@ Finder.prototype = {
     revert: function() {
     // Reversion occurs backwards so as to avoid nodes subsequently
     // replaced during the matching phase (a forward process):
-    for (var l = this.reverts.length; l--;) {
+    for (let l = this.reverts.length; l--;) {
         this.reverts[l]();
     }
     this.reverts = [];
     },
 
     prepareReplacementString: function(string, portion, match) {
-    var portionMode = this.options.portionMode;
+    let portionMode = this.options.portionMode;
     if (
         portionMode === PORTION_MODE_FIRST &&
         portion.indexInMatch > 0
@@ -631,7 +615,7 @@ Finder.prototype = {
         return '';
     }
     string = string.replace(/\$(\d+|&|`|')/g, function($0, t) {
-        var replacement;
+        let replacement;
         switch(t) {
         case '&':
             replacement = match[0];
@@ -661,13 +645,13 @@ Finder.prototype = {
 
     getPortionReplacementNode: function(portion, match) {
 
-    var replacement = this.options.replace || '$&';
-    var wrapper = this.options.wrap;
-    var wrapperClass = this.options.wrapClass;
+    let replacement = this.options.replace || '$&';
+    let wrapper = this.options.wrap;
+    let wrapperClass = this.options.wrapClass;
 
     if (wrapper && wrapper.nodeType) {
         // Wrapper has been provided as a stencil-node for us to clone:
-        var clone = doc.createElement('div');
+        let clone = doc.createElement('div');
         clone.innerHTML = wrapper.outerHTML || new XMLSerializer().serializeToString(wrapper);
         wrapper = clone.firstChild;
     }
@@ -680,7 +664,7 @@ Finder.prototype = {
         return doc.createTextNode(String(replacement));
     }
 
-    var el = typeof wrapper == 'string' ? doc.createElement(wrapper) : wrapper;
+    let el = typeof wrapper == 'string' ? doc.createElement(wrapper) : wrapper;
 
     if (el && wrapperClass) {
         el.className = wrapperClass;
@@ -707,15 +691,15 @@ Finder.prototype = {
 
     replaceMatch: function(match, startPortion, innerPortions, endPortion) {
 
-    var matchStartNode = startPortion.node;
-    var matchEndNode = endPortion.node;
+    let matchStartNode = startPortion.node;
+    let matchEndNode = endPortion.node;
 
-    var precedingTextNode;
-    var followingTextNode;
+    let precedingTextNode;
+    let followingTextNode;
 
     if (matchStartNode === matchEndNode) {
 
-        var node = matchStartNode;
+        let node = matchStartNode;
 
         if (startPortion.indexInNode > 0) {
         // Add `before` text node (before the match)
@@ -724,7 +708,7 @@ Finder.prototype = {
         }
 
         // Create the replacement node:
-        var newNode = this.getPortionReplacementNode(
+        let newNode = this.getPortionReplacementNode(
         endPortion,
         match
         );
@@ -763,16 +747,16 @@ Finder.prototype = {
         matchEndNode.data.substring(endPortion.endIndexInNode)
         );
 
-        var firstNode = this.getPortionReplacementNode(
+        let firstNode = this.getPortionReplacementNode(
         startPortion,
         match
         );
 
-        var innerNodes = [];
+        let innerNodes = [];
 
-        for (var i = 0, l = innerPortions.length; i < l; ++i) {
-        var portion = innerPortions[i];
-        var innerNode = this.getPortionReplacementNode(
+        for (let i = 0, l = innerPortions.length; i < l; ++i) {
+        let portion = innerPortions[i];
+        let innerNode = this.getPortionReplacementNode(
             portion,
             match
         );
@@ -785,7 +769,7 @@ Finder.prototype = {
         innerNodes.push(innerNode);
         }
 
-        var lastNode = this.getPortionReplacementNode(
+        let lastNode = this.getPortionReplacementNode(
         endPortion,
         match
         );
@@ -815,5 +799,3 @@ return exposed;
 
 }));
   
-
-hightlightEntirePage();

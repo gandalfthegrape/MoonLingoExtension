@@ -808,14 +808,16 @@ async function combineAndSave(newHighlights, language) {
             if (highlights[language][hKeys[i]] == undefined) {
                 highlights[language][hKeys[i]] = newHighlights[language][hKeys[i]];
             } else {
-                highlights[language[hKeys[i]]].meaning = [...new Set([...highlights[language][hKeys[i]].meaning, ...newHighlights[language][hKeys[i]].meaning])];
-                highlights[language[hKeys[i]]].phrase = [...new Set([...highlights[language][hKeys[i]].phrase, ...newHighlights[language][hKeys[i]].phrase])];
+                //handle duplicate meanings/phrases
+                highlights[language][hKeys[i]].meaning = [...new Set([...highlights[language][hKeys[i]].meaning, ...newHighlights[language][hKeys[i]].meaning])];
+                highlights[language][hKeys[i]].phrase = [...new Set([...highlights[language][hKeys[i]].phrase, ...newHighlights[language][hKeys[i]].phrase])];
             }
         }; 
     }
     console.log(highlights);
     console.log("going to save!");
     await chrome.storage.local.set({ highlights }, () => { });
+    chrome.tabs.sendMessage(activeTab.id, { "message": "refresh" });
 }
 
 document.getElementById("csvInputButton").addEventListener('click',

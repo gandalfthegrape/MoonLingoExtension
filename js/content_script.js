@@ -111,7 +111,7 @@ async function initializeHighlights() {
     if (!highlights[language]) {
         highlights[language] = {};
     };
-    chrome.storage.local.set({ highlights }, () => { });
+    await chrome.storage.local.set({ highlights }, () => { });
 };
 
 async function saveNote(elem, word, note) {
@@ -160,6 +160,9 @@ chrome.runtime.onMessage.addListener(
             removeAllHighlights();
             language = request.language;
             hightlightEntirePage();
+        }
+        if (request.message === "refresh") {
+            initializeHighlights();
         }
     }
 );

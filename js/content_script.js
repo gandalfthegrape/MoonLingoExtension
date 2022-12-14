@@ -118,15 +118,25 @@ async function saveNote(elem, word, note) {
     console.log("saveNote");
 
     console.log(`Saving ${language} ${word} with note ${note}`)
-    highlights[language][word] = [
-        note
-    ];
+
+    //eventually want to handle adding / removing notes
+
+    // if (highlights[language][word] != undefined) {
+    //     highlights[language][word] = {
+    //         meaning: [...new Set([...highlights[language][word], [note]])],
+    //         phrase: [...new Set([...highlights[language][word], []])]
+    //     }
+    // } else {
+    highlights[language][word] = {
+        meaning: [note],
+        phrase: []
+    };
+    // }
     await chrome.storage.local.set({ highlights }, () => { });
     console.log("storage saved");
     elem.classList.remove("defaultHighlight");
     elem.classList.add("foundHighlight");
     elem.setAttribute("data-note", note);
-
 };
 
 

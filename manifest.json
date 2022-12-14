@@ -3,9 +3,10 @@
   "version": "1.0",
   "description": "Read in your target language and track known words. Save definitions and notes for any word.",
   "background": {
-    "scripts": ["js/background.js"]
+    "service_worker": "js/background.js"
   },
-  "permissions": ["unlimitedstorage", "storage", "activeTab", "tabs", "http://*/", "https://*/"],
+  "permissions": ["scripting", "unlimitedstorage", "storage", "activeTab", "tabs"],
+  "host_permissions": ["http://*/", "https://*/"],
   "commands": {
     "applyDefaultHighlights": {
       "suggested_key": {
@@ -15,7 +16,7 @@
       "description": "Re-apply highlights to page."
     }
   },
-  "browser_action": {
+  "action": {
     "default_popup": "popup.html"
   },
   "icons": {
@@ -32,5 +33,5 @@
       "css": ["css/style.css"]
     }
   ],
-  "manifest_version": 2
+  "manifest_version": 3
 }

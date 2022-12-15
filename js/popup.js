@@ -800,7 +800,7 @@ const readLocalStorage = async () => {
 async function combineAndSave(newHighlights, language) {
     let highlights = await readLocalStorage();
     if (highlights[language] == undefined) {
-        highlights[language] == newHighlights[language];
+        highlights[language] = newHighlights[language];
     } else {
         let hKeys = Object.keys(newHighlights[language]);
         console.log(hKeys);
@@ -809,8 +809,11 @@ async function combineAndSave(newHighlights, language) {
                 highlights[language][hKeys[i]] = newHighlights[language][hKeys[i]];
             } else {
                 //handle duplicate meanings/phrases
-                highlights[language][hKeys[i]].meaning = [...new Set([...highlights[language][hKeys[i]].meaning, ...newHighlights[language][hKeys[i]].meaning])];
-                highlights[language][hKeys[i]].phrase = [...new Set([...highlights[language][hKeys[i]].phrase, ...newHighlights[language][hKeys[i]].phrase])];
+                let hLightVal = highlights[language][hKeys[i]];
+                let newhLightVal = newHighlights[language][hKeys[i]];
+                highlights[language][hKeys[i]].meaning = [...new Set([...hLightVal.meaning, ...newhLightVal.meaning])];
+                highlights[language][hKeys[i]].phrase = [...new Set([...hLightVal.phrase, ...newhLightVal.phrase])];
+                highlights[language][hKeys[i]].level = hLightVal.level < newhLightVal.level ? newhLightVal.level : hLightVal.level;
             }
         }; 
     }
@@ -839,7 +842,7 @@ document.getElementById("csvInputButton").addEventListener('click',
                 for (let i = 0; i < n; i++) {
                     let item = data[i];
                     if (item.term == "") { console.log(item); continue; };
-                    languageHighlights[item.term] = { meaning: [item.meaning1], phrase: [item.phrase] };
+                    languageHighlights[item.term] = { meaning: [item.meaning1], phrase: [item.phrase], level : 1};
                       // .push({ `${item.term}` : [meaning: item.meaning1, phrase: item.phrase]} )
                 }
                 newHighlights = {};
@@ -893,3 +896,22 @@ async function savePreferences(prefs) {
     await chrome.storage.local.set({ prefs }, () => { })
 }
 
+//////////////////////////////////////////////////////////////////////
+
+
+document.getElementById("lingqRequest").addEventListener('click',
+    function () {
+        const url = "https://www.lingq.com/api/v3/fr/cards/?page=1&page_size=100000&search_criteria=startsWith&sort=alpha&status=0&status=1&status=2&status=3&status=4";
+        const req = new XMLHttpRequest();
+        req.open("GET", url);
+        req.send();
+
+        req.onreadystatechange = (e) => {
+            let results = req.responseText;
+            console.log(results);
+            //console.log(results.length);
+        }
+
+        return;
+    }
+);

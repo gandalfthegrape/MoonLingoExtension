@@ -12,6 +12,7 @@ function showMenu() {
 
     const text = currentElement.innerText;
     const note = currentElement.dataset.note || "";
+    const level = currentElement.dataset.level || 1;
 
     let menuDiv = document.createElement("div");
     menuDiv.setAttribute("id", "contextMenu");
@@ -24,11 +25,24 @@ function showMenu() {
     textInput.setAttribute("value", note);
     menuDiv.appendChild(textInput);
 
+    let levelInput = document.createElement("select");
+    levelInput.setAttribute("class", "noHideOnClick");
+    levelInput.setAttribute("value", level);
+    let elem;
+    for (let i = 1; i <= 5; i++){
+        elem = document.createElement("option");
+        elem.value = i;
+        elem.textContent = i;
+        if(level == i){elem.setAttribute("selected", null)}
+        levelInput.appendChild(elem);
+    }
+    menuDiv.appendChild(levelInput);
+
     let okButton = document.createElement("input");
     okButton.setAttribute("type", "button");
     okButton.setAttribute("class", "noHideOnClick");
     okButton.setAttribute("value", "OK");
-    okButton.onclick = async function () { await saveNote(currentElement, text, textInput.value) };
+    okButton.onclick = async function () { await saveNote(currentElement, text, textInput.value, levelInput.value) };
     menuDiv.appendChild(okButton);
 
     currentElement.appendChild(menuDiv);
@@ -63,7 +77,7 @@ function toggleDisableLink(node) {
 document.addEventListener("contextmenu", function(event) {
   // Only do something when the element that was actually right-clicked
   // on has the right class to trigger the menu
-    if (event.target.classList.contains("highlightHover")) {
+    if (event.target.className.includes("highlight-")) {
         hideMenu();
         event.preventDefault();
         currentElement = event.target;
@@ -114,7 +128,7 @@ async function initializeHighlights() {
     await chrome.storage.local.set({ highlights }, () => { });
 };
 
-async function saveNote(elem, word, note) {
+async function saveNote(elem, word, note, level) {
     console.log("saveNote");
 
     console.log(`Saving ${language} ${word} with note ${note}`)
@@ -129,14 +143,16 @@ async function saveNote(elem, word, note) {
     // } else {
     highlights[language][word] = {
         meaning: [note],
-        phrase: []
+        phrase: [],
+        level: level,
     };
     // }
     await chrome.storage.local.set({ highlights }, () => { });
     console.log("storage saved");
-    elem.classList.remove("defaultHighlight");
-    elem.classList.add("foundHighlight");
+    elem.setAttribute("class", "highlight-" + level);
     elem.setAttribute("data-note", note);
+    elem.setAttribute("data-level", level);
+    // need some way to distribute element to the same word elsewhere on the page.
 };
 
 
@@ -180,7 +196,8 @@ async function hightlightEntirePage() {
         document.body,
         {
             preset: 'prose',
-            find: /[-'’A-Za-zÀ-ÖØ-öø-ÿ]+/g,
+            //find: /[-'’A-Za-zÀ-ÖØ-öø-ÿ]+/g,
+            find: /[-'’\p{L}]+/gu,
             replace: createWordNode
     //     wrap: 'span',
     //     wrapClass: 'defaultHighlight',
@@ -190,14 +207,14 @@ async function hightlightEntirePage() {
 
 function createWordNode(portion, match) {
     let node = document.createElement("span");
-    node.classList.add("highlightHover");
     node.innerText = portion.text;
-    let note = highlights[language][portion.text];
-    if (!note) {
-        node.classList.add("defaultHighlight");
+    let wordData = highlights[language][portion.text];
+    if (!wordData) {
+        node.setAttribute("class","highlight-0");
     } else {
-        node.classList.add("foundHighlight");
-        node.setAttribute("data-note", note);
+        node.setAttribute("class","highlight-" + wordData.level);
+        node.setAttribute("data-note", wordData.meaning[0]);//just displaying the first note for now
+        node.setAttribute("data-level", wordData.level);
     };
     return node; 
 };
@@ -395,9 +412,9 @@ Finder.prototype = {
     let textAggregation = this.getAggregateText();
     let matches = [];
     let self = this;
-
+    console.log(regex);
     regex = typeof regex === 'string' ? RegExp(escapeRegExp(regex), 'g') : regex;
-
+    console.log(regex);
     matchAggregation(textAggregation);
 
     function matchAggregation(textAggregation) {

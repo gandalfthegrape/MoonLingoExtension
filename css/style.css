@@ -1,17 +1,28 @@
-.highlightHover:hover{
+[class*="highlight-"] {
     position: relative;
+}
+[class*="highlight-"]:hover {
     box-shadow: 0px 0px 4px 0px rgba(0, 0, 0, 0.75);
     color: rgb(3, 26, 49);
 }
-
-.defaultHighlight{
-    background-color: #b1dadd;
+.highlight-0{
+    background-color: #abd8db;
 }
-
-.foundHighlight{
-    background-color: #d1bb92;
+.highlight-1{
+    background-color: #e0cea9;
 }
-
+.highlight-2{
+    background-color: #e2d8c3;
+}
+.highlight-3{
+    text-decoration: underline #bb9241;
+}
+.highlight-4{
+    text-decoration: underline dotted #bb9241;
+}
+.highlight-5{
+    background-color: none;
+}
 
 #contextMenu {
     cursor: default;

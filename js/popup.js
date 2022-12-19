@@ -732,8 +732,8 @@ let isoLangs = {
 }
 let languageOptions = Object.keys(isoLangs);
 
-let userLanguage;
-let userLanguageSelection = document.getElementById("userLanguageSelect");
+let defaultUserLanguage;
+let userLanguageSelect = document.getElementById("userLanguageSelect");
 let defaultLanguage;
 let languageSelect = document.getElementById("languageSelect");
 
@@ -743,7 +743,7 @@ for (var i = 0; i < languageOptions.length; i++){
     let elem = document.createElement("option");
     elem.value = opt;
     elem.textContent = isoLangs[opt]["nativeName"];
-    userLanguageSelection.appendChild(elem);
+    userLanguageSelect.appendChild(elem);
 
     let elem2 = document.createElement("option");
     elem2.value = opt;
@@ -753,38 +753,75 @@ for (var i = 0; i < languageOptions.length; i++){
 
 chrome.storage.local.get(["prefs"], function (results) {
     if (results["prefs"]) {
-        userLanguage = results["prefs"]["userLanguage"];
-        console.log(userLanguage);
-        userLanguageSelection.value = userLanguage;
+        defaultUserLanguage = results["prefs"]["userLanguage"];
+        console.log(defaultUserLanguage);
+        if (defaultUserLanguage) {
+            userLanguageSelect.value = defaultUserLanguage;
+        }
     }
 });
 
 
-
-
-chrome.tabs.query({ active: true }, tab => {
-    chrome.tabs.detectLanguage(tab.id, lang => {
-        defaultLanguage = lang;
-        console.log(defaultLanguage);
-        languageSelect.value = defaultLanguage;
+chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+    chrome.tabs.detectLanguage(tabs[0].id, async (lang) => {
+        console.log("Detected: " + lang);
+        if ((lang == undefined) || (lang == "und")) {
+            lang = await getDOMLanguage();
+            console.log("DOMLang: " + lang);
+        }
+        defaultLanguage = lang.substring(0,2);
+        if (languageOptions.includes(defaultLanguage)) {
+            languageSelect.value = defaultLanguage;
+            updateWordCount();
+        }
     });
 });
+
+const getDOMLanguage = async () => {
+    return new Promise(function (resolve, reject) {
+        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+            chrome.tabs.sendMessage(tabs[0].id, { "message": "getDOMLanguage" }, function (response) {
+                if (!response) {
+                    reject();
+                } else {
+                    resolve(response.language);
+                }
+            })
+        })
+    });
+}
 
 document.getElementById("applyDefaultHighlightsButton").addEventListener('click',
     function () {
         console.log("sending message");
-        let language = document.getElementById("languageSelect").value;
+        let language = languageSelect.value;
+        let userLanguage = userLanguageSelect.value;
+        if (language == "") {
+            alert("No language selected.");
+            return;
+        }
         console.log(language);
         chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
             var activeTab = tabs[0];
-            chrome.tabs.sendMessage(activeTab.id, { "message": "applyDefaultHighlights", "language": language });
+            chrome.tabs.sendMessage(activeTab.id, { "message": "applyDefaultHighlights", "language": language, "userLanguage": userLanguage });
             console.log("message sent");
             //chrome.tabs.executeScript(tab.id, { file: "js/applyDefaultHighlights.js" });
         });
     }
 );
 
-const readLocalStorage = async () => {
+document.getElementById("removeAllHighlightsButton").addEventListener('click',
+    function () {
+        console.log("sending message");
+        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+            var activeTab = tabs[0];
+            chrome.tabs.sendMessage(activeTab.id, { "message": "removeAllHighlights" });
+            console.log("message sent");
+            //chrome.tabs.executeScript(tab.id, { file: "js/applyDefaultHighlights.js" });
+        });
+    }
+);
+const readLocalStorage = () => {
     console.log("readLocalStorage");
     return new Promise((resolve, reject) => {
         chrome.storage.local.get(["highlights"], function (results) {
@@ -805,28 +842,31 @@ async function combineAndSave(newHighlights, language) {
         let hKeys = Object.keys(newHighlights[language]);
         console.log(hKeys);
         for (let i = 0; i < hKeys.length; i++) {
-            if (highlights[language][hKeys[i]] == undefined) {
-                highlights[language][hKeys[i]] = newHighlights[language][hKeys[i]];
+            if (highlights[language][hKeys[i].toLowerCase()] == undefined) {
+                highlights[language][hKeys[i].toLowerCase()] = newHighlights[language][hKeys[i]];
             } else {
                 //handle duplicate meanings/phrases
-                let hLightVal = highlights[language][hKeys[i]];
+                let hLightVal = highlights[language][hKeys[i].toLowerCase()];
                 let newhLightVal = newHighlights[language][hKeys[i]];
-                highlights[language][hKeys[i]].meaning = [...new Set([...hLightVal.meaning, ...newhLightVal.meaning])];
-                highlights[language][hKeys[i]].phrase = [...new Set([...hLightVal.phrase, ...newhLightVal.phrase])];
-                highlights[language][hKeys[i]].level = hLightVal.level < newhLightVal.level ? newhLightVal.level : hLightVal.level;
+                highlights[language][hKeys[i].toLowerCase()].meaning = [...new Set([...hLightVal.meaning, ...newhLightVal.meaning])];
+                highlights[language][hKeys[i].toLowerCase()].phrase = [...new Set([...hLightVal.phrase, ...newhLightVal.phrase])];
+                highlights[language][hKeys[i].toLowerCase()].level = hLightVal.level < newhLightVal.level ? newhLightVal.level : hLightVal.level;
             }
         }; 
     }
     console.log(highlights);
     console.log("going to save!");
     await chrome.storage.local.set({ highlights }, () => { });
-    chrome.tabs.sendMessage(activeTab.id, { "message": "refresh" });
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        chrome.tabs.sendMessage(tabs[0].id, { "message": "refresh", "language": languageSelect.value, "userLanguage": userLanguageSelect.value });
+    })
+    
 }
 
 document.getElementById("csvInputButton").addEventListener('click',
     function () {
         console.log("csvInputButton clicked");
-        let language = document.getElementById("languageSelect").value;
+        let language = languageSelect.value;
         let csvInput = document.getElementById("csvInput").files[0];
         console.log(csvInput);
 
@@ -872,21 +912,50 @@ document.getElementById("csvInputButton").addEventListener('click',
 
 document.getElementById("languageCheckBox").addEventListener('click',
     function () {
-        let ls = document.getElementById("languageSelect");
-        ls.disabled = !ls.disabled;
+        languageSelect.disabled = !languageSelect.disabled;
         return;
     }
 );
 
 document.getElementById("userLanguageSelect").addEventListener('change',
     function () {
-        let userLanguage = document.getElementById("userLanguageSelect").value;
+        let userLanguage = userLanguageSelect.value;
         if (userLanguage != "--User language--") {
+            defaultUserLanguage = userLanguage;
             savePreferences({ "userLanguage": userLanguage });
         }
         return;
     }
 );
+
+document.getElementById("languageSelect").addEventListener('change',
+    () => {
+        let lang = languageSelect.value;
+        if (lang != "") {
+            defaultLanguage = lang;
+            //savePreferences({ "userLanguage": userLanguage });
+        }
+
+        updateWordCount();
+    }
+);    
+
+function updateWordCount() {
+    return new Promise((resolve, reject) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+            chrome.tabs.sendMessage(tabs[0].id, { "message": "updateWordCount", "language": defaultLanguage }, response => {
+                if (!response) {
+                    reject();
+                } else {
+                    console.log(response);
+                    document.getElementById("wordCount").innerText = `Word Count: ${response.wordCount}`;
+                    resolve();
+                }
+               
+            })
+        })
+    })
+}
 
 async function getPreferences() {
     return;
@@ -900,18 +969,167 @@ async function savePreferences(prefs) {
 
 
 document.getElementById("lingqRequest").addEventListener('click',
-    function () {
-        const url = "https://www.lingq.com/api/v3/fr/cards/?page=1&page_size=100000&search_criteria=startsWith&sort=alpha&status=0&status=1&status=2&status=3&status=4";
-        const req = new XMLHttpRequest();
-        req.open("GET", url);
-        req.send();
+    async function () {
+        let newHighlights = {};
+        let lingqs = [];
+        let lingq;
 
-        req.onreadystatechange = (e) => {
-            let results = req.responseText;
-            console.log(results);
-            //console.log(results.length);
+        //get lingqs
+
+        // for (let i = 1; i <= 10; i++) {
+        //     lingq = await lingqRequest(i, defaultLanguage);
+        //     if (lingq.length == 0) { break }
+        //     lingqs.push(...lingq);
+        // }
+        // // console.log(lingqs);
+        // lingqs = processLingqs(lingqs);
+        // newHighlights[defaultLanguage] = lingqs;
+        // await combineAndSave(newHighlights, defaultLanguage);
+
+        //get known words
+
+        lingqs = [];
+        for (let i = 1; i <= 100; i++) {
+            lingq = await lingqKnownWordsRequest(i, defaultLanguage);
+            if (lingq.length==0) { break; }
+            lingqs.push(...lingq);
         }
+        // console.log(lingqs);
+
+        lingqs = processKnownWords(lingqs);
+        // console.log(lingqsProcessed);
+        newHighlights[defaultLanguage] = lingqs;
+        await combineAndSave(newHighlights, defaultLanguage);
 
         return;
     }
 );
+
+function processLingqs(words) {
+    let newWords = {};
+    for (let i = 0; i < words.length; i++){
+        let data = words[i];
+        let word = data.term;
+        let phrase = data.fragment;
+        let notes = [];
+        for (let j = 0; j < data.hints.length; j++){
+            notes.push(data.hints[j].text);
+        }
+        let level = data.status;
+        newWords[word] = {
+            meaning: notes,
+            phrase: [phrase],
+            level: level
+        }
+
+    }
+
+    return;
+}
+
+function processKnownWords(words) {
+    let newWords = {};
+    for (let i = 0; i < words.length; i++){
+        let data = words[i];
+        let word = data.word;
+        if (!isNaN(parseFloat(word))) {
+            continue;
+        }
+        newWords[data.word] = {
+            meaning: [],
+            phrase: [],
+            level: 5
+        }
+    }
+    return newWords;
+}
+
+function lingqRequest(page, lang) {
+    return new Promise(function(resolve, reject){
+        const url = `https://www.lingq.com/api/v3/${lang}/cards/?page=${page}&page_size=1000&search_criteria=startsWith&sort=alpha&status=1&status=2&status=3&status=4`;
+        const req = new XMLHttpRequest();
+        req.open("GET", url);
+        req.send();
+        req.onreadystatechange = (e) => {
+            let status = req.status;
+            if (status == 200) {
+                let results = req.responseText;
+                let json = JSON.parse(results);
+                let lingqs = json.results;
+               //console.log(lingqs);
+                resolve(lingqs);
+            } else {
+                resolve([]);
+            }
+        }
+    })
+}
+function lingqKnownWordsRequest(page, lang) {
+    return new Promise(function (resolve, reject) {
+        const url = `https://www.lingq.com/api/v2/${lang}/known-words/?page=${page}&page_size=1000`;
+        const req = new XMLHttpRequest();
+        req.open("GET", url);
+        req.send();
+        req.onreadystatechange = (e) => {
+            let status = req.status;
+            if (status == 200) {
+                let results = req.responseText;
+                let json = JSON.parse(results);
+                let lingqs = json.results;
+               //console.log(lingqs);
+                resolve(lingqs);
+            } else {
+                resolve([]);
+            }
+        }
+    })
+}
+
+
+
+
+
+
+
+
+
+async function getIPAText(word) {
+    return new Promise(function (resolve, reject) {
+        console.log(word);
+        url = `https://${defaultLanguage}.wiktionary.org/wiki/` + word;
+        console.log(url);
+
+        let request = new XMLHttpRequest();
+    
+        request.open('GET', url, true),
+        request.send()
+        request.onreadystatechange = (e) => {
+            let status = request.status;
+            if (status == 200) {
+                let results = request.responseText;
+                let dummy = document.createElement("html");
+                dummy.innerHTML = results;
+                let ipaText = dummy.getElementsByClassName("ipa") || dummy.getElementsByClassName("IPA");
+                if (ipaText.length==0) {
+                    resolve("");
+                }
+                resolve(results);
+            } else {
+                resolve("");
+            }
+        }
+    })
+}
+
+chrome.runtime.onMessage.addListener(
+    async function (request, sender, sendResonse) {
+        console.log("message received");
+        if (request.message === "getIPA") {
+            console.log("Message = getIPA");
+            let ipa = await getIPAText(request.word);
+            sendReponse({ipa: ipa})
+        }
+    }
+);
+// let testNode = document.getElementById("test");
+// testNode.addEventListener('click', async () => { return getIPAText("lernen") });

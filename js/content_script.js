@@ -4,13 +4,13 @@ console.log("Running content_script.js");
 // })
 let currentElement;
 
-function showMenu() {
+async function showMenu() {
     const parent = currentElement.parentElement;
     if (parent.nodeName == "A") {
         toggleDisableLink(parent);
     };
 
-    const text = currentElement.innerText;
+    const text = currentElement.dataset.word;
     const note = currentElement.dataset.note || "";
     const level = currentElement.dataset.level || 1;
 
@@ -19,13 +19,19 @@ function showMenu() {
     menuDiv.setAttribute("class", "noHideOnClick");
     menuDiv.innerHTML = `${text}<br>`;
 
+    // let ipaNode = document.createElement("span");
+    // ipaNode.setAttribute("id", "ipaNode");
+    // ipaNode.setAttribute("class", "noHideOnClick");
+
     let textInput = document.createElement("input");
-    textInput.setAttribute("type", "userDefinition");
+    textInput.setAttribute("id", "userDefinition")
+    textInput.setAttribute("type", "text");
     textInput.setAttribute("class", "noHideOnClick");
     textInput.setAttribute("value", note);
     menuDiv.appendChild(textInput);
 
     let levelInput = document.createElement("select");
+    levelInput.setAttribute("id", "levelInput");
     levelInput.setAttribute("class", "noHideOnClick");
     levelInput.setAttribute("value", level);
     let elem;
@@ -39,13 +45,68 @@ function showMenu() {
     menuDiv.appendChild(levelInput);
 
     let okButton = document.createElement("input");
+    okButton.setAttribute("id", "contextMenuButton");
     okButton.setAttribute("type", "button");
     okButton.setAttribute("class", "noHideOnClick");
-    okButton.setAttribute("value", "OK");
-    okButton.onclick = async function () { await saveNote(currentElement, text, textInput.value, levelInput.value) };
+    okButton.setAttribute("value", "Save");
+    okButton.onclick = async function () { await saveNote(text, textInput.value, levelInput.value) };
     menuDiv.appendChild(okButton);
 
+    let knownButton = document.createElement("input");
+    knownButton.setAttribute("id", "contextMenuKnownButton");
+    knownButton.setAttribute("type", "button");
+    knownButton.setAttribute("class", "noHideOnClick");
+    knownButton.setAttribute("value", "Known");
+    knownButton.onclick = async function () { levelInput.value = 5;  await saveNote(text, textInput.value, levelInput.value) };
+    menuDiv.appendChild(knownButton);
+    
+
+    let wictionaryLink1 = document.createElement("input");
+    wictionaryLink1.setAttribute("id", "wictionaryLink1");
+    wictionaryLink1.setAttribute("type", "button");
+    wictionaryLink1.setAttribute("class", "noHideOnClick");
+    wictionaryLink1.setAttribute("value", `Wiktionary(${language})`);
+    wictionaryLink1.onclick = async function (){ await window.open(`https://${language}.wiktionary.org/wiki/${text}`) }
+    menuDiv.appendChild(wictionaryLink1);
+
+    let wictionaryLink2 = document.createElement("input");
+    wictionaryLink2.setAttribute("id", "wictionaryLink2");
+    wictionaryLink2.setAttribute("type", "button");
+    wictionaryLink2.setAttribute("class", "noHideOnClick");
+    wictionaryLink2.setAttribute("value", `Wiktionary(${userLanguage})`);
+    wictionaryLink2.onclick = async function (){ await window.open(`https://${userLanguage}.wiktionary.org/wiki/${text}`) }
+    menuDiv.appendChild(wictionaryLink2);
+
     currentElement.appendChild(menuDiv);
+
+    // ipaNode.textContent = 
+    // await getIPAText(text);
+}
+
+async function getIPAText(word) {
+    return new Promise(function (resolve, reject) {
+        console.log(word);
+        url = `https://${language}.wiktionary.org/wiki/` + word;
+        console.log(url);
+
+        let request = new XMLHttpRequest();
+    
+        request.open('GET', url, true),
+        request.send()
+        request.onreadystatechange = (e) => {
+            let status = request.status;
+            if (status == 200) {
+                let results = request.responseText;
+                let dummy = document.createElement("html");
+                dummy.innerHTML = results;
+                let ipaText = dummy.getElementsByClassName("IPA");
+                console.log(ipaText.textContent);
+                resolve(results);
+            } else {
+                resolve(undefined);
+            }
+        }
+    })
 }
 
 function hideMenu() {
@@ -74,14 +135,14 @@ function toggleDisableLink(node) {
     }
 }
 // Set up an event handler for the document right click
-document.addEventListener("contextmenu", function(event) {
+document.addEventListener("contextmenu", async function(event) {
   // Only do something when the element that was actually right-clicked
   // on has the right class to trigger the menu
     if (event.target.className.includes("highlight-")) {
         hideMenu();
         event.preventDefault();
         currentElement = event.target;
-        showMenu();
+        await showMenu();
     }
 });
 
@@ -98,7 +159,8 @@ document.addEventListener("click", function (event) {
 //handling chrome.storage
 
 let highlights;
-let language = "English";
+let language = "en";
+let userLanguage = "en";
 
 
 const readLocalStorage = async () => {
@@ -128,7 +190,7 @@ async function initializeHighlights() {
     await chrome.storage.local.set({ highlights }, () => { });
 };
 
-async function saveNote(elem, word, note, level) {
+async function saveNote(word, note, level) {
     console.log("saveNote");
 
     console.log(`Saving ${language} ${word} with note ${note}`)
@@ -141,6 +203,8 @@ async function saveNote(elem, word, note, level) {
     //         phrase: [...new Set([...highlights[language][word], []])]
     //     }
     // } else {
+    
+
     highlights[language][word] = {
         meaning: [note],
         phrase: [],
@@ -149,10 +213,14 @@ async function saveNote(elem, word, note, level) {
     // }
     await chrome.storage.local.set({ highlights }, () => { });
     console.log("storage saved");
-    elem.setAttribute("class", "highlight-" + level);
-    elem.setAttribute("data-note", note);
-    elem.setAttribute("data-level", level);
+
     // need some way to distribute element to the same word elsewhere on the page.
+    document.querySelectorAll(`[data-word="${word}"`).forEach(el => {
+        el.setAttribute("class", "highlight-" + level);
+        el.setAttribute("data-note", note);
+        el.setAttribute("data-level", level);
+    }
+    )
 };
 
 
@@ -169,22 +237,49 @@ async function saveNote(elem, word, note, level) {
 
 
 chrome.runtime.onMessage.addListener(
-    function (request, sender, sendResonse) {
+    function (request, sender, sendResponse) {
         console.log("message received");
         if (request.message === "applyDefaultHighlights") {
             console.log("Message = applyDefaultHighlights");
             removeAllHighlights();
+            userLanguage = request.userLanguage;
             language = request.language;
             hightlightEntirePage();
-        }
-        if (request.message === "refresh") {
+        }else if (request.message === "refresh") {
+            console.log("Message = applyDefaultHighlights");
             initializeHighlights();
+            removeAllHighlights();
+            userLanguage = request.userLanguage;
+            language = request.language;
+            hightlightEntirePage();
+        }else if (request.message === "removeAllHighlights") {
+            removeAllHighlights();
+        }else if (request.message === "getDOMLanguage") {
+            sendResponse({ "language": document.documentElement.lang })
+        } else if (request.message === "updateWordCount") {
+            getWordCount(request.language).then(wordCount => { sendResponse({ "wordCount": wordCount }) })
+        } else {
+            sendResponse({ "message": "invalid message" })
         }
+        return true;
     }
 );
 
+async function getWordCount(lang) {
+    if (highlights===undefined) {
+        await initializeHighlights();
+    }
+    let words = highlights[lang];
+    let wordCount = 0;
+    if (words != undefined) {
+        wordCount = Object.keys(words).length;
+    }
+    console.log("WordCount: " + wordCount);
+    return wordCount;
+}
+
 function removeAllHighlights() {
-    //need to figure out how to do this;
+    document.querySelectorAll('[class*=highlight]').forEach(el => el.replaceWith(el.innerText));
     return;
 }
 
@@ -198,27 +293,63 @@ async function hightlightEntirePage() {
             preset: 'prose',
             //find: /[-'’A-Za-zÀ-ÖØ-öø-ÿ]+/g,
             find: /[-'’\p{L}]+/gu,
-            replace: createWordNode
+            replace: replacementNodes
     //     wrap: 'span',
     //     wrapClass: 'defaultHighlight',
         }
     );
 };
 
-function createWordNode(portion, match) {
-    let node = document.createElement("span");
-    node.innerText = portion.text;
-    let wordData = highlights[language][portion.text];
-    if (!wordData) {
-        node.setAttribute("class","highlight-0");
+function tokenizeScript(text, language) {
+    var it = Intl.v8BreakIterator([language], {type:'word'})
+    it.adoptText(text)
+    var words = []
+  
+    var cur = 0, prev = 0
+  
+    while (cur < text.length) {
+      prev = cur
+      cur = it.next()
+      words.push(text.substring(prev, cur))
+    }
+  
+    return words
+}
+
+function replacementNodes(portion, match) {
+    let node;
+    if (language == "zh") {
+        node = document.createElement("span");
+        let words = tokenizeScript(portion.text, language);
+        // console.log(words);
+        for (let i = 0; i < words.length; i++){
+            let wordNode = createWordNode(words[i]);
+            node.appendChild(wordNode);
+        }
     } else {
-        node.setAttribute("class","highlight-" + wordData.level);
-        node.setAttribute("data-note", wordData.meaning[0]);//just displaying the first note for now
-        node.setAttribute("data-level", wordData.level);
-    };
-    return node; 
+        node = createWordNode(portion.text);
+    }
+    return node;
 };
 
+function createWordNode(word) {
+    let wordNode = document.createElement("span");
+    wordNode.innerText = word;
+
+    word = word.toLowerCase();
+    word = word.replace(/^[-'’]+|[-'’]+$/gu, '');
+
+    wordNode.setAttribute("data-word", word);
+    let wordData = highlights[language][word];
+    if (!wordData) {
+        wordNode.setAttribute("class", "highlight-0");
+    } else {
+        wordNode.setAttribute("class", "highlight-" + wordData.level);
+        wordNode.setAttribute("data-note", wordData.meaning[0]);//just displaying the first note for now
+        wordNode.setAttribute("data-level", wordData.level);
+    }
+    return wordNode;
+}
 
 
 /////////////////////

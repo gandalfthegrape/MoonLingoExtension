@@ -8,7 +8,7 @@
     <body>
         <label for="userLanguageSelect">User language:</label>
         <select name="userLanguages" id="userLanguageSelect">
-            <option>--User language--</option>
+            <option value="">--User language--</option>
         </select>
 
         <label for="languageCheckBox">Override language detection:</label>
@@ -16,9 +16,13 @@
         <br>
         <label for="languageSelect">Target language:</label>
         <select name="languages" id="languageSelect" disabled=true>
-            <option>--Target language--</option>
+            <option value="">--Target language--</option>
         </select>
+        <span id="wordCount"></span>
+        <br>
+
         <button id="applyDefaultHighlightsButton">Start</button>
+        <button id="removeAllHighlightsButton">Quit</button>
         <br>
         <br>
         <label for="csvInput">Upload words to storage:</label>
@@ -26,6 +30,7 @@
         <button id="csvInputButton">Upload files to word list.</button>
 
         <button id="lingqRequest">Pull from Lingq.</button>
+        <button id="test">Test</button>
 
         <script type="text/javascript" src="js/papaparse.js"></script>
         <script type="text/javascript" src="js/popup.js"></script>

@@ -6,7 +6,7 @@
     "service_worker": "js/background.js"
   },
   "permissions": ["scripting", "unlimitedstorage", "storage", "activeTab", "tabs"],
-  "host_permissions": ["http://*/", "https://*/"],
+  "host_permissions": ["http://*/", "https://*/","<all_urls>"],
   "commands": {
     "applyDefaultHighlights": {
       "suggested_key": {
